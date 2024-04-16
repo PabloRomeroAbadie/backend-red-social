@@ -26,7 +26,6 @@ const register = async (req, res) => {
             mensaje: "Faltan datos por enviar"
         });
     }
-    console.log(params);
 
     try {
         // control de usuarios duplicados 
@@ -102,7 +101,33 @@ const login = async (req, res) => {
     } catch (error) {
         console.log(error);
     }
+}
 
+const profile = async(req, res) => {
+    //recibir el parametro del id de usuario por la url
+    const id =  req.params.id;
+
+    //consulta para sacar los datos del usuario
+    try {
+        const userProfile = await User.findById(id).select({password:0, role: 0}) ;
+
+        if(!userProfile){
+            return res.status(404).send({
+                status:"error",
+                message:"El usuario no existe o hay un error"
+            })
+        }
+
+        //devolver el resultado
+        //posteriormente devolver informacion de follows (aun no esta hecha)
+        return res.status(200).send({
+            status:"success",
+            user: userProfile
+        })
+        
+    } catch (error) {
+        console.log(error);
+    }
 }
 
 
@@ -110,5 +135,6 @@ const login = async (req, res) => {
 module.exports = {
     pruebaUser,
     register,
-    login
+    login,
+    profile
 }
