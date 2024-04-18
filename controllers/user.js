@@ -1,9 +1,11 @@
 //importar dependencias y modulos
 const bcrypt = require('bcrypt');
+const mongoosePaginate = require('mongoose-paginate-v2');
 //importar modelos
 const User = require('../models/user');
 //importar servicios
-const jwt = require('../services/jwt')
+const jwt = require('../services/jwt');
+const user = require('../models/user');
 
 
 //acciones de prueba
@@ -80,9 +82,9 @@ const login = async (req, res) => {
         if (!user) return res.status(404).send({ status: "error", mensaje: "No existe el usuario" });
 
         //comprobar su contraseña
-        const pwd = bcrypt.compareSync(params.password, user.password )
+        const pwd = bcrypt.compareSync(params.password, user.password)
 
-        if(!pwd) return res.status(400).send({status:"error",mensaje:"No te has identificado correctamente"});
+        if (!pwd) return res.status(400).send({ status: "error", mensaje: "No te has identificado correctamente" });
 
         //Conseguir token
         const token = jwt.createToken(user);
@@ -103,38 +105,167 @@ const login = async (req, res) => {
     }
 }
 
-const profile = async(req, res) => {
+const profile = async (req, res) => {
     //recibir el parametro del id de usuario por la url
-    const id =  req.params.id;
+    const id = req.params.id;
 
     //consulta para sacar los datos del usuario
     try {
-        const userProfile = await User.findById(id).select({password:0, role: 0}) ;
+        const userProfile = await User.findById(id).select({ password: 0, role: 0 });
 
-        if(!userProfile){
+        if (!userProfile) {
             return res.status(404).send({
-                status:"error",
-                message:"El usuario no existe o hay un error"
+                status: "error",
+                message: "El usuario no existe o hay un error"
             })
         }
 
         //devolver el resultado
         //posteriormente devolver informacion de follows (aun no esta hecha)
         return res.status(200).send({
-            status:"success",
+            status: "success",
             user: userProfile
         })
-        
+
     } catch (error) {
         console.log(error);
     }
 }
 
+const list = (req, res) => {
+    // Controlar en qué página estamos
+    let page = 1;
+    if (req.params.page) {
+        page = parseInt(req.params.page);
+    }
+
+    // Número de elementos por página
+    const itemsPerPage = 5;
+
+    // Consultar usuarios con paginación
+    User.paginate({}, { page, limit: itemsPerPage, sort: '_id' }, (error, result) => {
+        if (error) {
+            console.error(error);
+            return res.status(500).json({
+                status: "error",
+                message: "Hubo un error al procesar la solicitud"
+            });
+        }
+
+        // Devolver resultado
+        return res.status(200).json({
+            status: "success",
+            users: result.docs,
+            page: result.page,
+            itemsPerPage,
+            total: result.totalDocs,
+            pages: Math.ceil(result.totalDocs / itemsPerPage)
+        });
+    });
+};
+
+const update = async (req, res) => {
+    try {
+        // Recoger info del usuario a actualizar
+        const userIdentity = req.user;
+        let userToUpdate = req.body;
+
+        // Eliminar campos sobrantes
+        delete userIdentity.iat;
+        delete userIdentity.exp;
+        delete userIdentity.role;
+        delete userIdentity.image;
+
+        // Comprobar si el usuario ya existe
+        const users = await User.find({ $or: [{ email: userToUpdate.email }, { nick: userToUpdate.nick }] });
+
+        let userIsset = false;
+        users.forEach(user => {
+            if (user && user._id != userIdentity.id) userIsset = true;
+        });
+
+        if (userIsset) {
+            return res.status(200).send({
+                status: "success",
+                mensaje: "El usuario ya existe"
+            });
+        }
+
+        // Cifrar la contraseña 
+        if (userToUpdate.password) {
+            let pwd = await bcrypt.hash(userToUpdate.password, 10);
+            userToUpdate.password = pwd;
+        }
+
+        // buscar y actualizar
+        let userUpdated = await User.findByIdAndUpdate(userIdentity.id, userToUpdate, {new: true})
+
+        if(!userUpdated) return res.status(500).json({ status: "error", mensaje: "Error al actualizar"})
+
+        //devolver respuesta
+        return res.status(200).send({
+            status:"success",
+            message:"Metodo de actualizar usuario",
+            user: userUpdated
+        })
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ status: "error", message: "Error en la consulta" });
+    }
+};
+
+
+// const update = (req, res) => {
+//     //recoger info del usuario a actualizar
+//     const userIdentity = req.user;
+//     let userToUpdate = req.body;
+
+//     //eliminar campos sobrantes
+//     delete userIdentity.iat;
+//     delete userIdentity.exp;
+//     delete userIdentity.role;
+//     delete userIdentity.image;
+
+//     //comprobar si el usuario ya existe
+//     User.find({ $or: [{ email: userToUpdate.email }, { nick: userToUpdate.nick }] }).exec(async (error, users) => {
+//         if (error) return res.status(500).json({ status: "error", message: "Error en la consulta" })
+
+//         let userIsset = false;
+//         users.forEach(user => {
+//             if (user && user._id != userIdentity.id) userIsset = true;
+//         })
+
+//         if (userIsset){
+//             return res.status(200).send({
+//                 status: "success",
+//                 mensaje: "El usuario ya existe"
+//             });
+//         }
+
+//         // cifrar la contraseña 
+//         if (userToUpdate.password) {
+//             let pwd = await bcrypt.hash(userToUpdate.password, 10)
+//             userToUpdate.password = pwd;
+//         }
+
+//         //buscar y actualizar 
+//         return res.status(200).send({
+//             status: "success",
+//             message: "Metodo de actualizar usuario",
+//             userToUpdate
+//         })
+
+//     })
+// }
 
 //exportar acciones
 module.exports = {
     pruebaUser,
     register,
     login,
-    profile
+    profile,
+    list,
+    update
 }
+
