@@ -1,6 +1,8 @@
 //importar dependencias y modulos
 const bcrypt = require('bcrypt');
 const mongoosePaginate = require('mongoose-paginate-v2');
+const fs = require('fs');
+const path = require('path')
 //importar modelos
 const User = require('../models/user');
 //importar servicios
@@ -198,66 +200,93 @@ const update = async (req, res) => {
         }
 
         // buscar y actualizar
-        let userUpdated = await User.findByIdAndUpdate(userIdentity.id, userToUpdate, {new: true})
+        let userUpdated = await User.findByIdAndUpdate(userIdentity.id, userToUpdate, { new: true })
 
-        if(!userUpdated) return res.status(500).json({ status: "error", mensaje: "Error al actualizar"})
+        if (!userUpdated) return res.status(500).json({ status: "error", mensaje: "Error al actualizar" })
 
         //devolver respuesta
         return res.status(200).send({
-            status:"success",
-            message:"Metodo de actualizar usuario",
+            status: "success",
+            message: "Metodo de actualizar usuario",
             user: userUpdated
         })
 
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ status: "error", message: "Error en la consulta" });
+        return res.status(500).json({ status: "error", message: "Error al actualizar" });
     }
 };
 
+const upload = async (req, res) => {
 
-// const update = (req, res) => {
-//     //recoger info del usuario a actualizar
-//     const userIdentity = req.user;
-//     let userToUpdate = req.body;
+    //recoger el fichero de imagen y comprobar que existe 
+    if (!req.file) {
+        return res.status(404).send({
+            status: "error",
+            message: "Peticion no incluye la imagen"
+        })
+    }
 
-//     //eliminar campos sobrantes
-//     delete userIdentity.iat;
-//     delete userIdentity.exp;
-//     delete userIdentity.role;
-//     delete userIdentity.image;
+    //conseguir el nombre del archivo
+    let image = req.file.originalname;
 
-//     //comprobar si el usuario ya existe
-//     User.find({ $or: [{ email: userToUpdate.email }, { nick: userToUpdate.nick }] }).exec(async (error, users) => {
-//         if (error) return res.status(500).json({ status: "error", message: "Error en la consulta" })
+    //sacar extension del archivo
+    const imageSplit = image.split("\.");
+    const extension = imageSplit[1];
 
-//         let userIsset = false;
-//         users.forEach(user => {
-//             if (user && user._id != userIdentity.id) userIsset = true;
-//         })
+    //comprobar extension
+    if (extension != "png" && extension != "jpg" && extension != "jpeg" && extension != "gif") {
 
-//         if (userIsset){
-//             return res.status(200).send({
-//                 status: "success",
-//                 mensaje: "El usuario ya existe"
-//             });
-//         }
+        //borrar archivo subido
+        const filePath = req.file.path
+        const fileDeleted = fs.unlinkSync(filePath);
 
-//         // cifrar la contraseña 
-//         if (userToUpdate.password) {
-//             let pwd = await bcrypt.hash(userToUpdate.password, 10)
-//             userToUpdate.password = pwd;
-//         }
+        //devolver respuesta negativa
+        return res.status(400).send({
+            status: "error",
+            message: "extension del fichero invalida"
+        })
+    }
 
-//         //buscar y actualizar 
-//         return res.status(200).send({
-//             status: "success",
-//             message: "Metodo de actualizar usuario",
-//             userToUpdate
-//         })
+    //si si es correcta, guardar imagen en base de datos
+    let userUpdated = await User.findOneAndUpdate({ _id: req.user.id }, { image: req.file.filename }, { new: true })
 
-//     })
-// }
+    if (!userUpdated) {
+        return res.status(500).send({
+            status: "error",
+            message: "Error en la subida de avatar"
+        })
+    }
+
+    //devolver respuesta 
+    return res.status(200).send({
+        status: "success",
+        user: userUpdated,
+        file: req.file,
+    })
+}
+
+const avatar = (req, res) => {
+
+    //sacar el parametro de la url
+    const file = req.params.file;
+
+    //montar el path real de la imagen 
+    const filePath = "./uploads/avatars/" + file;
+
+    //comprobar que el archivo existe
+    fs.stat(filePath, (error, exist) => {
+        if (!exist) {
+            return res.status(404).send({
+                status: "error",
+                message: "No existe la imagen"
+            })
+        }
+
+        //devolver un file
+        return res.sendFile(path.resolve(filePath));
+    })
+}
 
 //exportar acciones
 module.exports = {
@@ -266,6 +295,8 @@ module.exports = {
     login,
     profile,
     list,
-    update
+    update,
+    upload,
+    avatar
 }
 
