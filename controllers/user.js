@@ -7,7 +7,6 @@ const path = require('path')
 const User = require('../models/user');
 //importar servicios
 const jwt = require('../services/jwt');
-const user = require('../models/user');
 
 
 //acciones de prueba
@@ -200,7 +199,7 @@ const update = async (req, res) => {
         }
 
         // buscar y actualizar
-        let userUpdated = await User.findByIdAndUpdate(userIdentity.id, userToUpdate, { new: true })
+        let userUpdated = await User.findByIdAndUpdate({_id: userIdentity.id}, userToUpdate, { new: true })
 
         if (!userUpdated) return res.status(500).json({ status: "error", mensaje: "Error al actualizar" })
 
