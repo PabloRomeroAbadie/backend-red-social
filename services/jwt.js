@@ -25,6 +25,5 @@ const createToken = (user) => {
 module.exports = {
     secret,
     createToken
-
 }
 

@@ -1,5 +1,4 @@
 const {Schema, model} = require('mongoose');
-const mongoose = require('mongoose');
 const mongoosePaginate = require('mongoose-paginate-v2');
 
 const UserSchema = Schema({
@@ -11,15 +10,15 @@ const UserSchema = Schema({
     bio: String,
     nick: {
         type: String,
-        require: true
+        required: true
     },
     email: {
         type: String,
-        require: true
+        required: true
     },
     password: {
         type: String,
-        require: true
+        required: true
     },
     role: {
         type: String,
