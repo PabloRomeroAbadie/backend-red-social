@@ -7,6 +7,8 @@ const path = require('path')
 const User = require('../models/user');
 //importar servicios
 const jwt = require('../services/jwt');
+const followService = require('../services/followService');
+const follow = require('../models/follow');
 
 
 //acciones de prueba
@@ -121,11 +123,15 @@ const profile = async (req, res) => {
             })
         }
 
+        //info de seguimiento
+        const followInfo = await followService.followThisUser(req.user.id, id)
+
         //devolver el resultado
-        //posteriormente devolver informacion de follows (aun no esta hecha)
         return res.status(200).send({
             status: "success",
-            user: userProfile
+            user: userProfile,
+            following: followInfo.following,
+            follower: followInfo.follower
         })
 
     } catch (error) {
