@@ -139,7 +139,7 @@ const profile = async (req, res) => {
     }
 }
 
-const list = (req, res) => {
+const list =  (req, res) => {
     // Controlar en qué página estamos
     let page = 1;
     if (req.params.page) {
@@ -150,7 +150,7 @@ const list = (req, res) => {
     const itemsPerPage = 5;
 
     // Consultar usuarios con paginación
-    User.paginate({}, { page, limit: itemsPerPage, sort: '_id' }, (error, result) => {
+    User.paginate({}, { page, limit: itemsPerPage, sort: '_id' }, async (error, result) => {
         if (error) {
             console.error(error);
             return res.status(500).json({
@@ -159,6 +159,9 @@ const list = (req, res) => {
             });
         }
 
+        //sacar array de ids de los usuarios que me siguen y los que sigo como pablo (usuario identificado en ese momento)
+        let followUserIds = await followService.followUserIds(req.user.id)
+
         // Devolver resultado
         return res.status(200).json({
             status: "success",
@@ -166,7 +169,9 @@ const list = (req, res) => {
             page: result.page,
             itemsPerPage,
             total: result.totalDocs,
-            pages: Math.ceil(result.totalDocs / itemsPerPage)
+            pages: Math.ceil(result.totalDocs / itemsPerPage),
+            user_following: followUserIds.following,
+            user_follow_me: followUserIds.followers
         });
     });
 };

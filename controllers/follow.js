@@ -3,7 +3,7 @@ const Follow = require('../models/follow');
 const User = require('../models/user');
 
 //importar dependencias
-const mongoosePaginate = require('mongoose-paginate');
+//const mongoosePaginate = require('mongoose-paginate');
 
 //importar servicio
 const followService = require('../services/followService')
@@ -51,7 +51,6 @@ const save = async (req, res) => {
         console.error(error);
         return res.status(500).json({ status: "error", message: "Error al seguir" });
     }
-
 }
 
 //accion de borrar un follow (dejar de seguir)
@@ -144,11 +143,52 @@ const following = async (req, res) => {
 
 
 //accion de listado de usuarios que siguen a cualquier otro usuario (mis seguidores)
-const followers = (req, res) => {
-    return res.status(200).send({
-        status: "success",
-        message: "Listado de usuarios que me siguen"
-    })
+const followers = async (req, res) => {
+
+    //sacar el id del usuario identificado
+    let userId = req.user.id;
+
+    //comprobar si me llega el id por parametro en url
+    if (req.params.id) userId = req.params.id
+
+    //comprobar si me llega la pagina, si no la pagina 1
+    let page = 1;
+
+    if (req.params.page) page = req.params.page
+
+    //indicar cuantos usuarios por pagina quiero mostrar
+    const itemPerPage = 5;
+
+
+    try {
+        //find a follow, popular los datos de los usuarios y paginar con moongose paginate
+        const options = {
+            page: page, // Número de página que deseas obtener
+            limit: itemPerPage, // Cantidad de elementos por página
+            populate: [{ path: 'user', select: '-password -role -__v' }]
+        };
+
+        const query = await Follow.paginate({ followed: userId }, options);
+        
+        let followUserIds = await followService.followUserIds(req.user.id)
+  
+
+        return res.status(200).send({
+            status: "success",
+            message: "Listado de usuarios que me siguen",
+            follows: query.docs,
+            total: query.totalDocs,
+            pages: query.totalPages,
+            user_following: followUserIds.following,
+            user_follow_me: followUserIds.followers
+        })
+
+    } catch (error) {
+        return res.status(500).send({
+            status: "error",
+            message: "Error al obtener los usuarios seguidos",
+        });
+    }
 }
 
 //exportar acciones
