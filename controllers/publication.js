@@ -81,6 +81,37 @@ const detail = async (req, res) => {
 }
 
 // eliminar publicaciones
+const remove = async (req, res) => {
+    try {
+        //sacar el id de la publicacion a eliminar
+        const publicationId = req.params.id; 
+
+        // find y luego un remove
+        let publicationRemove = await Publication.findOne({"user": req.user.id, "_id": publicationId});
+
+        if(publicationRemove){
+            await publicationRemove.deleteOne();
+        }else{
+            return res.status(404).send({
+                status:"error",
+                message:"No existe la publicacion"
+            })
+        }
+    
+        //devolver respuesta
+        return res.status(200).send({
+            status:"success",
+            message:"Publicacion eliminada correctamente",
+            publicationRemove
+        })
+    } catch (error) {
+        return res.status(500).send({
+            status: "error",
+            message: "Error al eliminar publicacion"
+        });
+    }
+}
+
 
 // Listar todas las publicaciones 
 
@@ -94,5 +125,6 @@ const detail = async (req, res) => {
 module.exports = {
     pruebaPublication,
     save,
-    detail
+    detail,
+    remove
 }
