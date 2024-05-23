@@ -135,7 +135,7 @@ const publicationUSer = async (req, res) => {
         // find, populate, ordenar, paginar 
         let publications = await Publication.paginate({ "user": userId }, options);
 
-        if(publications.docs.length <= 0){
+        if(!publications || publications.docs.length <= 0){
             return res.status(404).send({status:"error", message:"No hay publicaciones para mostrar"});
         }
         //devolver respuesta
